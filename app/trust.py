@@ -1,6 +1,6 @@
 """Trust score calculation (EigenTrust-inspired)."""
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,7 +101,7 @@ async def calculate_trust_score(
 async def get_trust_info(
     session: AsyncSession,
     public_key: str
-) -> dict:
+) -> dict[str, Any]:
     """
     Get detailed trust information for an identity.
     
@@ -123,7 +123,7 @@ async def get_trust_info(
     vouches = await get_active_vouches_for(session, identity.id)
     trust_score = await calculate_trust_score(session, public_key)
     
-    vouch_infos = []
+    vouch_infos: list[dict[str, Any]] = []
     for vouch in vouches:
         vouch_infos.append({
             "id": vouch.id,
