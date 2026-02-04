@@ -1,6 +1,5 @@
 """Pydantic schemas for request/response validation."""
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -14,11 +13,11 @@ class RegisterRequest(BaseModel):
         description="Base64-encoded Ed25519 public key",
         examples=["AQAB..."]
     )
-    metadata: Optional[dict[str, str]] = Field(
+    metadata: dict[str, str] | None = Field(
         None,
         description="Optional metadata about this identity"
     )
-    
+
     @field_validator('public_key')
     @classmethod
     def validate_public_key(cls, v: str) -> str:
@@ -40,11 +39,11 @@ class VouchRequest(BaseModel):
         ...,
         description="Public key of the identity to vouch for"
     )
-    expires_in_days: Optional[int] = Field(
+    expires_in_days: int | None = Field(
         None,
         description="Number of days until vouch expires (None = no expiry)"
     )
-    
+
     @field_validator('vouchee_public_key')
     @classmethod
     def validate_vouchee_key(cls, v: str) -> str:
@@ -59,7 +58,7 @@ class VouchResponse(BaseModel):
     voucher_public_key: str
     vouchee_public_key: str
     created_at: datetime
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
 
 
 class VouchInfo(BaseModel):
@@ -67,7 +66,7 @@ class VouchInfo(BaseModel):
     id: str
     voucher_public_key: str
     created_at: datetime
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     revoked: bool
 
 
@@ -85,7 +84,7 @@ class VerifyRequest(BaseModel):
     public_key: str
     message: str
     signature: str
-    
+
     @field_validator('public_key')
     @classmethod
     def validate_public_key(cls, v: str) -> str:
@@ -103,4 +102,4 @@ class VerifyResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response."""
     error: str
-    detail: Optional[str] = None
+    detail: str | None = None

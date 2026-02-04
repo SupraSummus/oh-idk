@@ -1,7 +1,6 @@
 """Database models and connection."""
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
@@ -20,12 +19,12 @@ class Base(DeclarativeBase):
 class Identity(Base):
     """
     An identity in the system, identified by an Ed25519 public key.
-    
+
     This represents any entity: agent, human, or system.
     The public_key is the primary identifier - there are no usernames or passwords.
     """
     __tablename__ = "identities"
-    
+
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         primary_key=True,
@@ -42,7 +41,7 @@ class Identity(Base):
         server_default=func.now(),
         nullable=False
     )
-    metadata_json: Mapped[Optional[str]] = mapped_column(
+    metadata_json: Mapped[str | None] = mapped_column(
         Text,
         nullable=True
     )
@@ -51,7 +50,7 @@ class Identity(Base):
         default=True,
         nullable=False
     )
-    
+
     # Relationships
     vouches_given: Mapped[list["Vouch"]] = relationship(
         "Vouch",
@@ -68,12 +67,12 @@ class Identity(Base):
 class Vouch(Base):
     """
     A vouch from one identity to another.
-    
+
     This represents a trust relationship: voucher trusts vouchee.
     Vouches can optionally expire and can be revoked.
     """
     __tablename__ = "vouches"
-    
+
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         primary_key=True,
@@ -96,7 +95,7 @@ class Vouch(Base):
         server_default=func.now(),
         nullable=False
     )
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True
     )
@@ -105,11 +104,11 @@ class Vouch(Base):
         default=False,
         nullable=False
     )
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+    revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True
     )
-    
+
     # Relationships
     voucher: Mapped["Identity"] = relationship(
         "Identity",

@@ -2,9 +2,9 @@
 
 ## Immediate (PR #3 or next)
 - [x] Fix mypy errors (done in PR #3)
-- [ ] Fix ruff linting issues (133 errors, mostly whitespace)
-- [ ] Add more unit tests for crypto functions
-- [ ] Add integration tests for API endpoints
+- [x] Fix ruff linting issues (done - was 147 errors, fixed via auto-fix and manual corrections)
+- [x] Add more unit tests for crypto functions (added 12 new edge case tests)
+- [x] Add integration tests for API endpoints (added 14 API tests)
 
 ## Short Term
 - [ ] Set up PostgreSQL for local development
@@ -18,7 +18,7 @@
 - [ ] Add rate limiting
 - [ ] Add proper logging
 - [ ] Create OpenAPI documentation examples
-- [ ] Add health check endpoint for monitoring
+- [x] Add health check endpoint for monitoring (added /health endpoint)
 
 ## Future / Research
 - [ ] Consider vouch strength levels (partial vs full trust)
@@ -29,14 +29,14 @@
 ## Security Audit
 - [ ] Review all input validation
 - [ ] Ensure RLS policies are enforced
-- [ ] Add request signature timestamp tolerance check
+- [x] Add request signature timestamp tolerance check (already implemented - max_age_seconds parameter with 300s default)
 - [ ] Consider replay attack prevention
 
 ## Documentation
-- [ ] Add README with getting started guide
-- [ ] Document API endpoints
+- [x] Add README with getting started guide (README.md exists with getting started section)
+- [x] Document API endpoints (documented in README.md)
 - [ ] Add architecture diagram
-- [ ] Document trust calculation algorithm
+- [x] Document trust calculation algorithm (documented in README.md Trust Calculation section)
 
 ---
 *Maintained by Techlabee - Session 31*

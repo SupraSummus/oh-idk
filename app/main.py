@@ -1,6 +1,6 @@
 """Main FastAPI application."""
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -35,8 +35,18 @@ app = FastAPI(
 
 @app.get("/")
 async def root() -> dict[str, str]:
-    """Health check endpoint."""
+    """Root endpoint."""
     return {"status": "ok", "service": "oh-idk"}
+
+
+@app.get("/health")
+async def health_check() -> dict[str, str]:
+    """
+    Health check endpoint for monitoring.
+
+    Returns service status for load balancers and monitoring systems.
+    """
+    return {"status": "healthy", "service": "oh-idk", "version": "0.1.0"}
 
 
 @app.post(
@@ -50,7 +60,7 @@ async def register(
 ) -> RegisterResponse:
     """
     Register a new identity.
-    
+
     Anyone can register a public key. The key becomes the identity.
     No authentication required - you just need to have a valid Ed25519 key.
     """
@@ -58,20 +68,20 @@ async def register(
     query = select(Identity).where(Identity.public_key == request.public_key)
     result = await db.execute(query)
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         raise HTTPException(status_code=409, detail="Public key already registered")
-    
+
     # Create new identity
     identity = Identity(
         public_key=request.public_key,
         metadata_json=json.dumps(request.metadata) if request.metadata else None
     )
-    
+
     db.add(identity)
     await db.commit()
     await db.refresh(identity)
-    
+
     return RegisterResponse(
         id=identity.id,
         public_key=identity.public_key,
@@ -91,7 +101,7 @@ async def vouch(
 ) -> VouchResponse:
     """
     Vouch for another identity.
-    
+
     Requires authentication (signed request).
     Both voucher and vouchee must be registered.
     """
@@ -99,53 +109,53 @@ async def vouch(
     voucher_query = select(Identity).where(Identity.public_key == public_key)
     result = await db.execute(voucher_query)
     voucher = result.scalar_one_or_none()
-    
+
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not registered")
-    
+
     # Get vouchee identity
     vouchee_query = select(Identity).where(Identity.public_key == request.vouchee_public_key)
     result = await db.execute(vouchee_query)
     vouchee = result.scalar_one_or_none()
-    
+
     if not vouchee:
         raise HTTPException(status_code=404, detail="Vouchee not registered")
-    
+
     # Can't vouch for yourself
     if voucher.id == vouchee.id:
         raise HTTPException(status_code=400, detail="Cannot vouch for yourself")
-    
+
     # Check if vouch already exists
     existing_query = (
         select(Vouch)
         .where(Vouch.voucher_id == voucher.id)
         .where(Vouch.vouchee_id == vouchee.id)
-        .where(Vouch.revoked == False)
+        .where(Vouch.revoked.is_(False))
     )
     result = await db.execute(existing_query)
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         raise HTTPException(status_code=409, detail="Active vouch already exists")
-    
+
     # Calculate expiry
     expires_at = None
     if request.expires_in_days:
-        expires_at = datetime.now(timezone.utc) + timedelta(days=request.expires_in_days)
+        expires_at = datetime.now(UTC) + timedelta(days=request.expires_in_days)
     elif settings.vouch_default_ttl_days:
-        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.vouch_default_ttl_days)
-    
+        expires_at = datetime.now(UTC) + timedelta(days=settings.vouch_default_ttl_days)
+
     # Create vouch
     vouch = Vouch(
         voucher_id=voucher.id,
         vouchee_id=vouchee.id,
         expires_at=expires_at
     )
-    
+
     db.add(vouch)
     await db.commit()
     await db.refresh(vouch)
-    
+
     return VouchResponse(
         id=vouch.id,
         voucher_public_key=public_key,
@@ -165,15 +175,15 @@ async def get_trust(
 ) -> TrustResponse:
     """
     Get trust information for an identity.
-    
+
     Returns trust score and list of vouches.
     No authentication required - trust info is public.
     """
     if not is_valid_public_key(public_key):
         raise HTTPException(status_code=400, detail="Invalid public key format")
-    
+
     trust_info = await get_trust_info(db, public_key)
-    
+
     vouches = [
         VouchInfo(
             id=v["id"],
@@ -184,7 +194,7 @@ async def get_trust(
         )
         for v in trust_info["vouches"]
     ]
-    
+
     return TrustResponse(
         public_key=public_key,
         exists=trust_info["exists"],
@@ -203,7 +213,7 @@ async def verify(
 ) -> VerifyResponse:
     """
     Verify a signature.
-    
+
     This is a utility endpoint - no database access, just cryptographic verification.
     Useful for other services to verify signatures without their own crypto implementation.
     """
@@ -212,7 +222,7 @@ async def verify(
         message=request.message,
         signature_b64=request.signature
     )
-    
+
     return VerifyResponse(
         valid=is_valid,
         public_key=request.public_key
@@ -230,7 +240,7 @@ async def revoke_vouch(
 ) -> dict[str, str]:
     """
     Revoke a vouch.
-    
+
     Only the voucher can revoke their own vouch.
     Requires authentication (signed request).
     """
@@ -238,24 +248,24 @@ async def revoke_vouch(
     query = select(Vouch).where(Vouch.id == vouch_id)
     result = await db.execute(query)
     vouch = result.scalar_one_or_none()
-    
+
     if not vouch:
         raise HTTPException(status_code=404, detail="Vouch not found")
-    
+
     # Get voucher identity
     voucher_query = select(Identity).where(Identity.id == vouch.voucher_id)
     voucher_result = await db.execute(voucher_query)
     voucher: Identity | None = voucher_result.scalar_one_or_none()
-    
+
     if not voucher or voucher.public_key != public_key:
         raise HTTPException(status_code=401, detail="Not authorized to revoke this vouch")
-    
+
     if vouch.revoked:
         raise HTTPException(status_code=400, detail="Vouch already revoked")
-    
+
     # Revoke
     vouch.revoked = True
-    vouch.revoked_at = datetime.now(timezone.utc)
+    vouch.revoked_at = datetime.now(UTC)
     await db.commit()
-    
+
     return {"status": "revoked", "vouch_id": vouch_id}
