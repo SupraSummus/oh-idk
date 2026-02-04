@@ -244,8 +244,8 @@ async def revoke_vouch(
     
     # Get voucher identity
     voucher_query = select(Identity).where(Identity.id == vouch.voucher_id)
-    result = await db.execute(voucher_query)
-    voucher = result.scalar_one_or_none()
+    voucher_result = await db.execute(voucher_query)
+    voucher: Identity | None = voucher_result.scalar_one_or_none()
     
     if not voucher or voucher.public_key != public_key:
         raise HTTPException(status_code=401, detail="Not authorized to revoke this vouch")

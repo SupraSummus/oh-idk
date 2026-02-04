@@ -73,7 +73,8 @@ def optional_auth_headers(
         return None
     
     try:
-        timestamp = int(x_timestamp)
+        # x_timestamp is guaranteed to be str at this point (checked in if above)
+        timestamp = int(x_timestamp)  # type: ignore[arg-type]
         current_time = int(time.time())
         
         if abs(current_time - timestamp) > 300:

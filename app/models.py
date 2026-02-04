@@ -1,4 +1,5 @@
 """Database models and connection."""
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Optional
 from uuid import uuid4
@@ -127,7 +128,7 @@ engine = create_async_engine(settings.database_url, echo=settings.debug)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session."""
     async with async_session() as session:
         yield session
