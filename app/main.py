@@ -120,7 +120,7 @@ async def vouch(
         select(Vouch)
         .where(Vouch.voucher_id == voucher.id)
         .where(Vouch.vouchee_id == vouchee.id)
-        .where(Vouch.revoked == False)
+        .where(Vouch.revoked.is_(False))
     )
     result = await db.execute(existing_query)
     existing = result.scalar_one_or_none()
