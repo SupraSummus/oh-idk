@@ -3,7 +3,7 @@ import base64
 import time
 from typing import Tuple
 
-from nacl.exceptions import BadSignature
+from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey, VerifyKey
 
 
@@ -63,7 +63,7 @@ def verify_signature(public_key_b64: str, message: str, signature_b64: str) -> b
         verify_key.verify(message.encode('utf-8'), signature_bytes)
         
         return True
-    except (BadSignature, ValueError, Exception):
+    except (BadSignatureError, ValueError, Exception):
         return False
 
 
