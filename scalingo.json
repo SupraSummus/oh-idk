@@ -1,0 +1,29 @@
+{
+  "name": "oh-idk",
+  "description": "Agent Identity/SSO Service based on Web of Trust",
+  "repository": "https://github.com/SupraSummus/oh-idk",
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection URL",
+      "required": true
+    },
+    "DEBUG": {
+      "description": "Enable debug mode",
+      "value": "false"
+    },
+    "TRUST_DECAY_FACTOR": {
+      "description": "Trust decay per hop (0.0-1.0)",
+      "value": "0.5"
+    },
+    "MAX_TRUST_SCORE": {
+      "description": "Maximum trust score",
+      "value": "10.0"
+    }
+  },
+  "addons": [
+    "postgresql:postgresql-starter-512"
+  ],
+  "scripts": {
+    "postdeploy": "alembic upgrade head"
+  }
+}
