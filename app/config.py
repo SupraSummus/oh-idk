@@ -1,5 +1,6 @@
 """Configuration settings."""
 import os
+from typing import Any
 
 from pydantic_settings import BaseSettings
 
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     max_trust_score: float = 10.0  # Maximum trust score
     vouch_default_ttl_days: int | None = None  # None = no expiry
     
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # Convert postgresql:// to postgresql+asyncpg:// for async support
         if self.database_url.startswith("postgresql://"):
@@ -29,4 +30,4 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
-settings = Settings()
+settings: Settings = Settings()
