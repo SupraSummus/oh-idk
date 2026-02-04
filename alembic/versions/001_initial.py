@@ -1,21 +1,22 @@
 """Initial migration - identities and vouches
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2026-02-04
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
 revision: str = '001'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -29,10 +30,10 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean(), nullable=False, default=True),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create unique index on public_key
     op.create_index('ix_identities_public_key', 'identities', ['public_key'], unique=True)
-    
+
     # Create vouches table
     op.create_table(
         'vouches',
@@ -47,15 +48,15 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['vouchee_id'], ['identities.id']),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create indexes for efficient lookups
     op.create_index('ix_vouches_voucher_id', 'vouches', ['voucher_id'])
     op.create_index('ix_vouches_vouchee_id', 'vouches', ['vouchee_id'])
-    
+
     # Enable Row Level Security on both tables
     op.execute("ALTER TABLE identities ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE vouches ENABLE ROW LEVEL SECURITY")
-    
+
     # Note: RLS policies should be created according to your auth model
     # Example: Allow reading all identities
     # op.execute("""
