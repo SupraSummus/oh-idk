@@ -20,9 +20,9 @@ async def get_active_vouches_for(
     query = (
         select(Vouch)
         .where(Vouch.vouchee_id == identity_id)
-        .where(Vouch.revoked == False)
+        .where(Vouch.revoked.is_(False))
         .where(
-            (Vouch.expires_at == None) | (Vouch.expires_at > now)
+            (Vouch.expires_at.is_(None)) | (Vouch.expires_at > now)
         )
         .options(selectinload(Vouch.voucher))
     )
