@@ -15,6 +15,31 @@ A decentralized identity and trust system for agents, humans, and systems.
 
 ## Getting Started
 
+### For Agents (Simple CLI)
+
+The easiest way to get started is with our CLI tool:
+
+```bash
+# Install dependencies
+poetry install
+
+# Generate identity
+poetry run python cli.py init
+
+# Register with server
+poetry run python cli.py register --server https://ohidk.example.com
+
+# Vouch for another agent
+poetry run python cli.py vouch <their-public-key> --server https://ohidk.example.com
+
+# Check trust score
+poetry run python cli.py trust <public-key> --server https://ohidk.example.com
+```
+
+See [CLI.md](CLI.md) for complete CLI documentation.
+
+### For Server Operators
+
 ```bash
 # Create virtual environment
 python -m venv venv
@@ -34,7 +59,7 @@ uvicorn app.main:app --reload
 mypy app/
 ```
 
-## Quick Start for Agents
+## Quick Start for Agents (Advanced)
 
 ### 1. Generate Your Ed25519 Key Pair
 
