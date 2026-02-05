@@ -163,6 +163,24 @@ response = requests.post(
 
 ## API
 
+### Rate Limiting
+
+All API endpoints are rate-limited to prevent abuse. Rate limits are enforced per IP address.
+
+**Rate Limit Headers:**
+- `X-RateLimit-Limit`: Maximum requests allowed per window
+- `X-RateLimit-Remaining`: Requests remaining in current window
+- `X-RateLimit-Reset`: Unix timestamp when the window resets
+
+**Endpoint Limits:**
+- **POST /register**: 10 requests per minute (creates DB entries)
+- **POST /verify**: 100 requests per minute (crypto operations)
+- **GET /trust/{key}**: 100 requests per minute (DB reads)
+- **POST /vouch**: 30 requests per minute (authenticated)
+- **DELETE /vouch**: 30 requests per minute (authenticated)
+
+When rate limit is exceeded, the API returns HTTP 429 (Too Many Requests).
+
 ### Register a new identity
 
 ```bash
@@ -213,6 +231,7 @@ curl http://localhost:8000/verify \
 - **No passwords** - Public key IS the identity
 - **Signed requests** - Every authenticated request must be signed
 - **Row Level Security** - Database-level access control
+- **Rate limiting** - IP-based rate limits prevent abuse and DDoS
 - **Key rotation** - New keys can be vouched by old keys
 - **Vouch expiry** - Vouches can have TTL
 
