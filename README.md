@@ -55,14 +55,13 @@ alembic upgrade head
 # Run the server
 uvicorn app.main:app --reload
 
-# Run linters
-make lint          # Run all linters (mypy, ruff, pylint)
-make mypy          # Type checking only
-make ruff          # Ruff linting only
-make pylint        # Pylint linting only
+# Run linters (all three)
+poetry run ruff check app/ tests/
+poetry run mypy app/
+poetry run pylint app/ tests/
 
 # Run tests
-make test
+poetry run pytest tests/ -v
 ```
 
 ## Development
@@ -77,18 +76,20 @@ This project uses multiple linters to ensure code quality:
 
 Run all linters:
 ```bash
-make lint
+poetry run ruff check app/ tests/
+poetry run mypy app/
+poetry run pylint app/ tests/
 ```
 
 Or run individual linters:
 ```bash
-make mypy    # Type checking
-make ruff    # Style and common errors
-make pylint  # Code quality checks
+poetry run mypy app/           # Type checking
+poetry run ruff check app/ tests/    # Style and common errors
+poetry run pylint app/ tests/        # Code quality checks
 ```
 
 The pylint configuration (`.pylintrc`) is set to be practical, not overly strict:
-- Focuses on real problems: undefined names, import errors, unused variables
+- Focuses on real problems: undefined names, import errors, unused variables, exception handling
 - Disabled: Style preferences (handled by ruff), overly pedantic checks
 - Philosophy: Catch bugs, not enforce coding preferences
 

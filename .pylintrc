@@ -38,8 +38,6 @@ disable =
     ungrouped-imports,
     # Other noisy checks
     fixme,
-    broad-except,
-    bare-except,
     # Pytest patterns
     redefined-outer-name,
     import-outside-toplevel,
