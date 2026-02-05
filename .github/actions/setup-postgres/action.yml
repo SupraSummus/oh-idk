@@ -1,0 +1,8 @@
+name: 'Setup PostgreSQL'
+description: 'Run database migrations for PostgreSQL'
+runs:
+  using: 'composite'
+  steps:
+    - name: Run database migrations
+      shell: bash
+      run: poetry run alembic upgrade head
