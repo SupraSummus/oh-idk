@@ -118,7 +118,7 @@ def test_register_command_integration(client: TestClient) -> None:
         # Verify registration
         result = response.json()
         assert result["public_key"] == public_key
-        assert "id" in result
+        assert "created_at" in result
 
 
 def test_trust_command_missing_key() -> None:

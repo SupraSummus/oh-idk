@@ -28,7 +28,6 @@ class RegisterRequest(BaseModel):
 
 class RegisterResponse(BaseModel):
     """Response after registering an identity."""
-    id: str
     public_key: str
     created_at: datetime
 
@@ -54,7 +53,6 @@ class VouchRequest(BaseModel):
 
 class VouchResponse(BaseModel):
     """Response after creating a vouch."""
-    id: str
     voucher_public_key: str
     vouchee_public_key: str
     created_at: datetime
@@ -63,7 +61,6 @@ class VouchResponse(BaseModel):
 
 class VouchInfo(BaseModel):
     """Information about a vouch."""
-    id: str
     voucher_public_key: str
     created_at: datetime
     expires_at: datetime | None

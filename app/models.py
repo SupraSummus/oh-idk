@@ -1,10 +1,8 @@
 """Database models and connection."""
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -25,16 +23,10 @@ class Identity(Base):
     """
     __tablename__ = "identities"
 
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False),
-        primary_key=True,
-        default=lambda: str(uuid4())
-    )
     public_key: Mapped[str] = mapped_column(
         String(64),  # Ed25519 public key in base64 (44 chars, but allow some margin)
-        unique=True,
-        nullable=False,
-        index=True
+        primary_key=True,
+        nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -54,12 +46,12 @@ class Identity(Base):
     # Relationships
     vouches_given: Mapped[list["Vouch"]] = relationship(
         "Vouch",
-        foreign_keys="Vouch.voucher_id",
+        foreign_keys="Vouch.voucher_public_key",
         back_populates="voucher"
     )
     vouches_received: Mapped[list["Vouch"]] = relationship(
         "Vouch",
-        foreign_keys="Vouch.vouchee_id",
+        foreign_keys="Vouch.vouchee_public_key",
         back_populates="vouchee"
     )
 
@@ -70,25 +62,21 @@ class Vouch(Base):
 
     This represents a trust relationship: voucher trusts vouchee.
     Vouches can optionally expire and can be revoked.
+    Uses composite primary key (voucher_public_key, vouchee_public_key).
     """
     __tablename__ = "vouches"
 
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False),
+    voucher_public_key: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("identities.public_key"),
         primary_key=True,
-        default=lambda: str(uuid4())
+        nullable=False
     )
-    voucher_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False),
-        ForeignKey("identities.id"),
-        nullable=False,
-        index=True
-    )
-    vouchee_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False),
-        ForeignKey("identities.id"),
-        nullable=False,
-        index=True
+    vouchee_public_key: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("identities.public_key"),
+        primary_key=True,
+        nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -112,12 +100,12 @@ class Vouch(Base):
     # Relationships
     voucher: Mapped["Identity"] = relationship(
         "Identity",
-        foreign_keys=[voucher_id],
+        foreign_keys=[voucher_public_key],
         back_populates="vouches_given"
     )
     vouchee: Mapped["Identity"] = relationship(
         "Identity",
-        foreign_keys=[vouchee_id],
+        foreign_keys=[vouchee_public_key],
         back_populates="vouches_received"
     )
 

@@ -16,6 +16,7 @@ async def verify_auth_headers(
     Verify authentication headers for a signed request.
 
     The signature covers: METHOD:PATH:TIMESTAMP:BODY
+    Where PATH includes the query string if present.
 
     Args:
         request: FastAPI request object
@@ -38,11 +39,16 @@ async def verify_auth_headers(
     body = await request.body()
     body_str = body.decode('utf-8') if body else ""
 
+    # Build path including query string if present
+    path = request.url.path
+    if request.url.query:
+        path = f"{path}?{request.url.query}"
+
     # Verify the signature
     is_valid = verify_request_signature(
         public_key_b64=x_public_key,
         method=request.method,
-        path=request.url.path,
+        path=path,
         timestamp=timestamp,
         signature_b64=x_signature,
         body=body_str

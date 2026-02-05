@@ -192,7 +192,7 @@ def test_trust_invalid_public_key(client: TestClient) -> None:
 
 def test_revoke_vouch_requires_auth(client: TestClient) -> None:
     """Test revoke endpoint requires authentication."""
-    response = client.delete("/vouch/some-vouch-id")
+    response = client.delete("/vouch?voucher_public_key=test&vouchee_public_key=test")
     assert response.status_code == 422  # Missing required headers
 
 
