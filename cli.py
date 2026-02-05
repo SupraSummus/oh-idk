@@ -219,7 +219,7 @@ def cmd_register(args: argparse.Namespace) -> None:
             try:
                 error = response.json()
                 print(f"  Error: {error.get('detail', error)}", file=sys.stderr)
-            except Exception:
+            except json.JSONDecodeError:
                 print(f"  Response: {response.text}", file=sys.stderr)
             sys.exit(1)
 
@@ -266,7 +266,7 @@ def cmd_vouch(args: argparse.Namespace) -> None:
             try:
                 error = response.json()
                 print(f"  Error: {error.get('detail', error)}", file=sys.stderr)
-            except Exception:
+            except json.JSONDecodeError:
                 print(f"  Response: {response.text}", file=sys.stderr)
             sys.exit(1)
 
@@ -307,7 +307,7 @@ def cmd_trust(args: argparse.Namespace) -> None:
             try:
                 error = response.json()
                 print(f"  Error: {error.get('detail', error)}", file=sys.stderr)
-            except Exception:
+            except json.JSONDecodeError:
                 print(f"  Response: {response.text}", file=sys.stderr)
             sys.exit(1)
 

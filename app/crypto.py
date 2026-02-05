@@ -62,7 +62,7 @@ def verify_signature(public_key_b64: str, message: str, signature_b64: str) -> b
         verify_key.verify(message.encode('utf-8'), signature_bytes)
 
         return True
-    except (BadSignatureError, ValueError, Exception):
+    except (BadSignatureError, ValueError):
         return False
 
 
@@ -144,5 +144,5 @@ def is_valid_public_key(public_key_b64: str) -> bool:
             return False
         VerifyKey(key_bytes)
         return True
-    except Exception:
+    except ValueError:
         return False
