@@ -35,8 +35,8 @@ Benefits:
 """
 import urllib.parse
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Vouch
@@ -51,7 +51,7 @@ from tests.conftest import create_auth_headers, create_test_identity
 async def test_vouch_creation_requires_registered_voucher(
     voucher_scenario: str,
     expected_status: int,
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     db_session: AsyncSession
 ) -> None:
     """
@@ -87,7 +87,7 @@ async def test_vouch_creation_requires_registered_voucher(
     headers = create_auth_headers(auth_private, auth_public, "POST", "/vouch", body)
 
     # Execute
-    response = client.post("/vouch", json=body, headers=headers)
+    response = await async_client.post("/vouch", json=body, headers=headers)
 
     # Assert
     assert response.status_code == expected_status
@@ -108,7 +108,7 @@ async def test_vouch_creation_requires_registered_voucher(
 async def test_vouch_creation_prevents_self_vouching(
     vouch_scenario: str,
     expected_status: int,
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     db_session: AsyncSession
 ) -> None:
     """
@@ -140,7 +140,7 @@ async def test_vouch_creation_prevents_self_vouching(
     headers = create_auth_headers(private1, public1, "POST", "/vouch", body)
 
     # Execute
-    response = client.post("/vouch", json=body, headers=headers)
+    response = await async_client.post("/vouch", json=body, headers=headers)
 
     # Assert
     assert response.status_code == expected_status
@@ -164,7 +164,7 @@ async def test_vouch_creation_prevents_self_vouching(
 async def test_vouch_revocation_authorization(
     revoker_scenario: str,
     expected_status: int,
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     db_session: AsyncSession
 ) -> None:
     """
@@ -215,7 +215,7 @@ async def test_vouch_revocation_authorization(
     headers = create_auth_headers(auth_private, auth_public, "DELETE", path)
 
     # Execute
-    response = client.delete(path, headers=headers)
+    response = await async_client.delete(path, headers=headers)
 
     # Assert
     assert response.status_code == expected_status
@@ -244,7 +244,7 @@ async def test_vouch_revocation_authorization(
 async def test_vouch_creation_prevents_duplicates(
     duplicate_scenario: str,
     expected_status: int,
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     db_session: AsyncSession
 ) -> None:
     """
@@ -277,7 +277,7 @@ async def test_vouch_creation_prevents_duplicates(
     headers = create_auth_headers(voucher_private, voucher_public, "POST", "/vouch", body)
 
     # Execute
-    response = client.post("/vouch", json=body, headers=headers)
+    response = await async_client.post("/vouch", json=body, headers=headers)
 
     # Assert
     assert response.status_code == expected_status
@@ -294,7 +294,7 @@ async def test_vouch_creation_prevents_duplicates(
 
 @pytest.mark.asyncio
 async def test_trust_query_is_public_no_auth_required(
-    client: TestClient,
+    async_client: httpx.AsyncClient,
     db_session: AsyncSession
 ) -> None:
     """
@@ -311,7 +311,7 @@ async def test_trust_query_is_public_no_auth_required(
     # For this test, we'll just verify the endpoint accepts requests without auth
     # We use a simple invalid key format to test accessibility without hitting
     # the path encoding issue
-    response = client.get("/trust/invalid-key-format")
+    response = await async_client.get("/trust/invalid-key-format")
 
     # Should return 400 (invalid format) not 401 (unauthorized) or 422 (missing auth)
     # This proves the endpoint is public and doesn't require authentication
