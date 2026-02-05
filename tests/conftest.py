@@ -67,6 +67,11 @@ def client(db_session: AsyncSession) -> TestClient:  # type: ignore[misc]
     Create a test client with overridden database dependency.
 
     This ensures all API calls use the test database session.
+
+    Note: The type: ignore[misc] is necessary because the fixture returns a
+    TestClient (not a generator), but it uses yield to allow cleanup code
+    to run after the test. Mypy's generator return type checking gets confused
+    by this pattern which is standard for pytest fixtures.
     """
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session

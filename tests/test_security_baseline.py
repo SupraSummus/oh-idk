@@ -43,8 +43,8 @@ from tests.conftest import create_auth_headers, create_test_identity
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("voucher_scenario,expected_status", [
-    ("voucher_self", 200),              # Baseline: registered user can vouch for another
-    ("vouchee_self", 404),              # Security: unregistered user cannot vouch
+    ("registered_voucher", 200),        # Baseline: registered user can vouch for another
+    ("unregistered_voucher", 404),      # Security: unregistered user cannot vouch
 ])
 async def test_vouch_creation_requires_registered_voucher(
     voucher_scenario: str,
@@ -73,10 +73,10 @@ async def test_vouch_creation_requires_registered_voucher(
     unregistered_public, unregistered_private = generate_keypair()
 
     # Select which identity tries to vouch based on scenario
-    if voucher_scenario == "voucher_self":
+    if voucher_scenario == "registered_voucher":
         # Baseline: registered user vouches
         auth_public, auth_private = voucher_public, voucher_private
-    else:  # vouchee_self
+    else:  # unregistered_voucher
         # Security check: unregistered user tries to vouch
         auth_public, auth_private = unregistered_public, unregistered_private
 
