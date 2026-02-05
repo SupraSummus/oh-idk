@@ -21,6 +21,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.crypto import create_request_signature, generate_keypair
 from app.main import app
@@ -36,8 +37,6 @@ TEST_DATABASE_URL = os.getenv(
 
 # Create a test engine and session maker
 # Use NullPool to avoid connection reuse issues with asyncpg during testing
-from sqlalchemy.pool import NullPool
-
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 TestSessionLocal = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
@@ -48,16 +47,16 @@ TestSessionLocal = async_sessionmaker(
 async def setup_database() -> AsyncGenerator[None, None]:
     """
     Set up the database schema once for all tests.
-    
+
     This creates tables at the beginning of the test session
     and drops them at the end.
     """
     # Create all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield
-    
+
     # Drop all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -81,10 +80,10 @@ async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]
     connection = await test_engine.connect()
     # Start a transaction
     transaction = await connection.begin()
-    
+
     # Create a session bound to this connection
     session = AsyncSession(bind=connection, expire_on_commit=False)
-    
+
     try:
         yield session
     finally:
@@ -108,13 +107,13 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[httpx.AsyncCl
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),  # type: ignore[arg-type]
         base_url="http://test"
     ) as client:
         yield client
-    
+
     app.dependency_overrides.clear()
 
 
@@ -124,7 +123,7 @@ def client(db_session: AsyncSession) -> TestClient:  # type: ignore[misc]
     Create a test client with overridden database dependency.
 
     This ensures all API calls use the test database session.
-    
+
     Note: This is for synchronous tests only. For async tests with PostgreSQL,
     use async_client instead to avoid event loop conflicts.
 
