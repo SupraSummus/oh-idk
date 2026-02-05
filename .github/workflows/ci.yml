@@ -10,6 +10,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_ohidk
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_ohidk
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_ohidk
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -38,6 +57,9 @@ jobs:
     
     - name: Install project
       run: poetry install --no-interaction
+    
+    - name: Run database migrations
+      run: poetry run alembic upgrade head
     
     - name: Run mypy
       run: poetry run mypy app/
