@@ -3,7 +3,10 @@ import json
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +27,9 @@ from app.schemas import (
 )
 from app.trust import get_trust_info
 
+# Configure rate limiter with headers enabled
+limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+
 app = FastAPI(
     title="oh-idk",
     description="Agent Identity/SSO Service based on Web of Trust",
@@ -31,6 +37,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 @app.get("/")
@@ -54,8 +64,11 @@ async def health_check() -> dict[str, str]:
     response_model=RegisterResponse,
     responses={400: {"model": ErrorResponse}, 409: {"model": ErrorResponse}}
 )
+@limiter.limit("10/minute")
 async def register(
-    request: RegisterRequest,
+    request: Request,
+    response: Response,
+    body: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)]
 ) -> RegisterResponse:
     """
@@ -63,9 +76,11 @@ async def register(
 
     Anyone can register a public key. The key becomes the identity.
     No authentication required - you just need to have a valid Ed25519 key.
+
+    Rate limit: 10 requests per minute per IP address.
     """
     # Check if key already exists
-    query = select(Identity).where(Identity.public_key == request.public_key)
+    query = select(Identity).where(Identity.public_key == body.public_key)
     result = await db.execute(query)
     existing = result.scalar_one_or_none()
 
@@ -74,8 +89,8 @@ async def register(
 
     # Create new identity
     identity = Identity(
-        public_key=request.public_key,
-        metadata_json=json.dumps(request.metadata) if request.metadata else None
+        public_key=body.public_key,
+        metadata_json=json.dumps(body.metadata) if body.metadata else None
     )
 
     db.add(identity)
@@ -93,8 +108,11 @@ async def register(
     response_model=VouchResponse,
     responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}}
 )
+@limiter.limit("30/minute")
 async def vouch(
-    request: VouchRequest,
+    request: Request,
+    response: Response,
+    body: VouchRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
     public_key: Annotated[str, Depends(verify_auth_headers)]
 ) -> VouchResponse:
@@ -103,6 +121,8 @@ async def vouch(
 
     Requires authentication (signed request).
     Both voucher and vouchee must be registered.
+
+    Rate limit: 30 requests per minute per IP address.
     """
     # Get voucher identity
     voucher_query = select(Identity).where(Identity.public_key == public_key)
@@ -113,7 +133,7 @@ async def vouch(
         raise HTTPException(status_code=404, detail="Voucher not registered")
 
     # Get vouchee identity
-    vouchee_query = select(Identity).where(Identity.public_key == request.vouchee_public_key)
+    vouchee_query = select(Identity).where(Identity.public_key == body.vouchee_public_key)
     result = await db.execute(vouchee_query)
     vouchee = result.scalar_one_or_none()
 
@@ -139,8 +159,8 @@ async def vouch(
 
     # Calculate expiry
     expires_at = None
-    if request.expires_in_days:
-        expires_at = datetime.now(UTC) + timedelta(days=request.expires_in_days)
+    if body.expires_in_days:
+        expires_at = datetime.now(UTC) + timedelta(days=body.expires_in_days)
     elif settings.vouch_default_ttl_days:
         expires_at = datetime.now(UTC) + timedelta(days=settings.vouch_default_ttl_days)
 
@@ -157,7 +177,7 @@ async def vouch(
 
     return VouchResponse(
         voucher_public_key=public_key,
-        vouchee_public_key=request.vouchee_public_key,
+        vouchee_public_key=body.vouchee_public_key,
         created_at=vouch.created_at,
         expires_at=vouch.expires_at
     )
@@ -167,7 +187,10 @@ async def vouch(
     "/trust/{public_key}",
     response_model=TrustResponse
 )
+@limiter.limit("100/minute")
 async def get_trust(
+    request: Request,
+    response: Response,
     public_key: str,
     db: Annotated[AsyncSession, Depends(get_db)]
 ) -> TrustResponse:
@@ -176,6 +199,8 @@ async def get_trust(
 
     Returns trust score and list of vouches.
     No authentication required - trust info is public.
+
+    Rate limit: 100 requests per minute per IP address.
     """
     if not is_valid_public_key(public_key):
         raise HTTPException(status_code=400, detail="Invalid public key format")
@@ -205,24 +230,29 @@ async def get_trust(
     "/verify",
     response_model=VerifyResponse
 )
+@limiter.limit("100/minute")
 async def verify(
-    request: VerifyRequest
+    request: Request,
+    response: Response,
+    body: VerifyRequest
 ) -> VerifyResponse:
     """
     Verify a signature.
 
     This is a utility endpoint - no database access, just cryptographic verification.
     Useful for other services to verify signatures without their own crypto implementation.
+
+    Rate limit: 100 requests per minute per IP address.
     """
     is_valid = verify_signature(
-        public_key_b64=request.public_key,
-        message=request.message,
-        signature_b64=request.signature
+        public_key_b64=body.public_key,
+        message=body.message,
+        signature_b64=body.signature
     )
 
     return VerifyResponse(
         valid=is_valid,
-        public_key=request.public_key
+        public_key=body.public_key
     )
 
 
@@ -230,7 +260,10 @@ async def verify(
     "/vouch",
     responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}}
 )
+@limiter.limit("30/minute")
 async def revoke_vouch(
+    request: Request,
+    response: Response,
     voucher_public_key: str,
     vouchee_public_key: str,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -241,6 +274,8 @@ async def revoke_vouch(
 
     Only the voucher can revoke their own vouch.
     Requires authentication (signed request).
+
+    Rate limit: 30 requests per minute per IP address.
 
     Query Parameters:
         voucher_public_key: Public key of the voucher
