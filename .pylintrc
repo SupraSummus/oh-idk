@@ -43,7 +43,7 @@ disable =
     # Pytest patterns
     redefined-outer-name,
     import-outside-toplevel,
-    # Test-specific: unused variables are common in test fixtures
+    # Unused checks (disabled because ruff already catches these more efficiently)
     unused-variable,
     unused-argument,
     unused-import,
