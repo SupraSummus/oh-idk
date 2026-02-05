@@ -55,9 +55,42 @@ alembic upgrade head
 # Run the server
 uvicorn app.main:app --reload
 
-# Run with type checking
-mypy app/
+# Run linters
+make lint          # Run all linters (mypy, ruff, pylint)
+make mypy          # Type checking only
+make ruff          # Ruff linting only
+make pylint        # Pylint linting only
+
+# Run tests
+make test
 ```
+
+## Development
+
+### Code Quality
+
+This project uses multiple linters to ensure code quality:
+
+- **mypy**: Strict type checking
+- **ruff**: Fast Python linter (catches style and common errors)
+- **pylint**: Additional code quality checks with recommended settings
+
+Run all linters:
+```bash
+make lint
+```
+
+Or run individual linters:
+```bash
+make mypy    # Type checking
+make ruff    # Style and common errors
+make pylint  # Code quality checks
+```
+
+The pylint configuration (`.pylintrc`) is set to be practical, not overly strict:
+- Focuses on real problems: undefined names, import errors, unused variables
+- Disabled: Style preferences (handled by ruff), overly pedantic checks
+- Philosophy: Catch bugs, not enforce coding preferences
 
 ## Quick Start for Agents (Advanced)
 

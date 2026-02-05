@@ -1,0 +1,86 @@
+[MAIN]
+# Python version
+py-version = 3.11
+
+# Files or directories to be skipped
+ignore = CVS,.git,__pycache__,.venv,venv,alembic
+
+# Use multiple processes to speed up Pylint
+jobs = 0
+
+# Allow loading of arbitrary C extensions
+unsafe-load-any-extension = no
+
+[MESSAGES CONTROL]
+# Disable overly pedantic checks that add noise without value
+# Focus on: unused variables, undefined names, import errors, basic type issues
+disable = 
+    # Style/formatting (ruff handles this)
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    line-too-long,
+    invalid-name,
+    # Too strict for practical use
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-instance-attributes,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-return-statements,
+    too-many-positional-arguments,
+    # FastAPI/SQLAlchemy patterns
+    no-member,
+    not-callable,
+    # Allow both import styles
+    wrong-import-order,
+    ungrouped-imports,
+    # Other noisy checks
+    fixme,
+    broad-except,
+    bare-except,
+    # Pytest patterns
+    redefined-outer-name,
+    import-outside-toplevel,
+    # Unused checks (disabled because ruff already catches these more efficiently)
+    unused-variable,
+    unused-argument,
+    unused-import,
+    # Empty base classes are fine
+    unnecessary-pass,
+
+[REPORTS]
+# Don't display score
+score = no
+
+# Output format
+output-format = colorized
+
+[BASIC]
+# Good variable names
+good-names = i,j,k,v,ex,db,id,_
+
+[FORMAT]
+# Maximum line length (aligned with ruff)
+max-line-length = 100
+
+[DESIGN]
+# Not too strict on design metrics
+max-args = 7
+max-locals = 20
+max-returns = 10
+max-branches = 15
+max-statements = 60
+
+[IMPORTS]
+# Allow wildcard imports in specific cases
+allow-wildcard-with-all = yes
+
+[LOGGING]
+# Check proper logging usage
+logging-format-style = new
+
+[EXCEPTIONS]
+# Allow catching Exception in some cases (async code often needs it)
+overgeneral-exceptions = builtins.BaseException

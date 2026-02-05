@@ -4,10 +4,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
-
-from tests.conftest import create_test_identity
 
 
 def run_cli(*args: str, key_file: str | None = None) -> tuple[int, str, str]:
@@ -31,7 +28,8 @@ def run_cli(*args: str, key_file: str | None = None) -> tuple[int, str, str]:
     result = subprocess.run(
         cmd,
         capture_output=True,
-        text=True
+        text=True,
+        check=False
     )
 
     return result.returncode, result.stdout, result.stderr
@@ -67,7 +65,7 @@ def test_init_command() -> None:
         assert oct(key_path.stat().st_mode)[-3:] == "600"
 
         # Verify key file content
-        key_data = json.loads(key_path.read_text())
+        key_data = json.loads(key_path.read_text(encoding="utf-8"))
         assert "public_key" in key_data
         assert "private_key" in key_data
         assert len(key_data["public_key"]) > 0
@@ -84,7 +82,7 @@ def test_init_command_force_overwrite() -> None:
         assert exit_code == 0
 
         key_path = Path(key_file)
-        first_key = json.loads(key_path.read_text())
+        first_key = json.loads(key_path.read_text(encoding="utf-8"))
 
         # Try to overwrite without --force (should fail)
         exit_code, stdout, stderr = run_cli("init", key_file=key_file)
@@ -96,7 +94,7 @@ def test_init_command_force_overwrite() -> None:
         assert exit_code == 0
 
         # Verify key changed
-        second_key = json.loads(key_path.read_text())
+        second_key = json.loads(key_path.read_text(encoding="utf-8"))
         assert first_key["public_key"] != second_key["public_key"]
 
 
@@ -110,7 +108,7 @@ def test_register_command_integration(client: TestClient) -> None:
         assert exit_code == 0
 
         # Get the public key
-        key_data = json.loads(Path(key_file).read_text())
+        key_data = json.loads(Path(key_file).read_text(encoding="utf-8"))
         public_key = key_data["public_key"]
 
         # Register via API directly to verify it works
@@ -166,8 +164,8 @@ def test_full_workflow_integration(client: TestClient, db_session) -> None:  # t
         assert exit_code == 0
 
         # 2. Register both via API
-        key1_data = json.loads(Path(key_file1).read_text())
-        key2_data = json.loads(Path(key_file2).read_text())
+        key1_data = json.loads(Path(key_file1).read_text(encoding="utf-8"))
+        key2_data = json.loads(Path(key_file2).read_text(encoding="utf-8"))
 
         response = client.post("/register", json={"public_key": key1_data["public_key"]})
         assert response.status_code == 200
