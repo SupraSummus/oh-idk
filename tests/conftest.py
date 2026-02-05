@@ -16,10 +16,12 @@ import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.crypto import create_request_signature, generate_keypair
 from app.main import app
@@ -34,31 +36,85 @@ TEST_DATABASE_URL = os.getenv(
 
 
 # Create a test engine and session maker
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+# Use NullPool to avoid connection reuse issues with asyncpg during testing
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 TestSessionLocal = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
+@pytest_asyncio.fixture(scope="session")
+async def setup_database() -> AsyncGenerator[None, None]:
     """
-    Create a test database session with automatic cleanup.
+    Set up the database schema once for all tests.
 
-    Creates all tables before the test and drops them after.
-    Each test gets a fresh database state.
+    This creates tables at the beginning of the test session
+    and drops them at the end.
     """
-    # Create tables
+    # Create all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Create session
-    async with TestSessionLocal() as session:
-        yield session
+    yield
 
-    # Drop tables after test
+    # Drop all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(setup_database: None) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Create a test database session with automatic cleanup using transaction rollback.
+
+    This pattern ensures proper isolation for async PostgreSQL connections:
+    1. Opens a connection from the pool
+    2. Starts a transaction
+    3. Creates a session bound to that connection
+    4. Rolls back the transaction after the test (undoes all changes)
+
+    This avoids "another operation is in progress" errors with asyncpg
+    and provides fast test isolation without recreating tables.
+    """
+    # Get a connection from the pool
+    connection = await test_engine.connect()
+    # Start a transaction
+    transaction = await connection.begin()
+
+    # Create a session bound to this connection
+    session = AsyncSession(bind=connection, expire_on_commit=False)
+
+    try:
+        yield session
+    finally:
+        # Close the session
+        await session.close()
+        # Rollback the transaction (undoes all changes made in the test)
+        await transaction.rollback()
+        # Close the connection to return it to the pool
+        await connection.close()
+
+
+@pytest_asyncio.fixture
+async def async_client(db_session: AsyncSession) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """
+    Create an async test client with overridden database dependency.
+
+    This ensures all API calls use the test database session.
+    Use this for async tests that need to interact with the database.
+    """
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),  # type: ignore[arg-type]
+        base_url="http://test"
+    ) as client:
+        yield client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -67,6 +123,9 @@ def client(db_session: AsyncSession) -> TestClient:  # type: ignore[misc]
     Create a test client with overridden database dependency.
 
     This ensures all API calls use the test database session.
+
+    Note: This is for synchronous tests only. For async tests with PostgreSQL,
+    use async_client instead to avoid event loop conflicts.
 
     Note: The type: ignore[misc] is necessary because the fixture returns a
     TestClient (not a generator), but it uses yield to allow cleanup code

@@ -58,8 +58,8 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
     
-    - name: Run database migrations
-      run: poetry run alembic upgrade head
+    - name: Setup PostgreSQL for tests
+      uses: ./.github/actions/setup-postgres
     
     - name: Run mypy
       run: poetry run mypy app/
