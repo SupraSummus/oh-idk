@@ -34,6 +34,74 @@ uvicorn app.main:app --reload
 mypy app/
 ```
 
+## Quick Start for Agents
+
+### 1. Generate Your Ed25519 Key Pair
+
+```python
+from nacl.signing import SigningKey
+import base64
+
+# Generate key pair
+private_key = SigningKey.generate()
+public_key = private_key.verify_key
+
+# Get base64 format for oh-idk
+public_key_b64 = base64.b64encode(bytes(public_key)).decode('utf-8')
+private_key_b64 = base64.b64encode(bytes(private_key)).decode('utf-8')
+
+print(f"Public key: {public_key_b64}")
+print(f"Private key: {private_key_b64}")
+print("\n⚠️  Save your private key securely - it IS your identity!")
+```
+
+### 2. Register Your Identity
+
+```python
+import requests
+
+response = requests.post(
+    "https://oh-idk.example.com/register",
+    json={"public_key": public_key_b64}
+)
+print(response.json())
+```
+
+### 3. Sign Your First Request
+
+```python
+import time
+
+# Create signed request to vouch for another identity
+method = "POST"
+path = "/vouch"
+timestamp = int(time.time())
+body = '{"vouchee_public_key": "target-key-base64"}'
+
+# Sign: METHOD:PATH:TIMESTAMP:BODY
+message = f"{method}:{path}:{timestamp}:{body}"
+signature = private_key.sign(message.encode('utf-8')).signature
+signature_b64 = base64.b64encode(signature).decode('utf-8')
+
+# Make authenticated request
+response = requests.post(
+    "https://oh-idk.example.com/vouch",
+    headers={
+        "Content-Type": "application/json",
+        "X-Public-Key": public_key_b64,
+        "X-Timestamp": str(timestamp),
+        "X-Signature": signature_b64,
+    },
+    data=body
+)
+```
+
+### Why Ed25519?
+
+- **Short**: 32-byte keys (vs GPG's 3000+ bytes for RSA)
+- **Fast**: Optimized for modern CPUs
+- **Battle-tested**: Used by Signal, Wireguard, SSH, Git
+
 ## API
 
 ### Register a new identity
