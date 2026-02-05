@@ -4,7 +4,6 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models import Identity, Vouch
@@ -24,7 +23,6 @@ async def get_active_vouches_for(
         .where(
             (Vouch.expires_at.is_(None)) | (Vouch.expires_at > now)
         )
-        .options(selectinload(Vouch.voucher))
     )
 
     result = await session.execute(query)
@@ -87,7 +85,7 @@ async def calculate_trust_score(
         if max_depth > 0:
             voucher_trust = await calculate_trust_score(
                 session,
-                vouch.voucher.public_key,
+                vouch.voucher_public_key,
                 max_depth=max_depth - 1,
                 _visited=_visited
             )
@@ -126,7 +124,7 @@ async def get_trust_info(
     vouch_infos: list[dict[str, Any]] = []
     for vouch in vouches:
         vouch_infos.append({
-            "voucher_public_key": vouch.voucher.public_key,
+            "voucher_public_key": vouch.voucher_public_key,
             "created_at": vouch.created_at,
             "expires_at": vouch.expires_at,
             "revoked": vouch.revoked
