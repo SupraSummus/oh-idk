@@ -7,11 +7,9 @@
 - [x] Add integration tests for API endpoints (added 14 API tests)
 
 ## Short Term
-- [ ] Set up PostgreSQL for local development
+- [ ] Set up PostgreSQL for local development (tracked in Issue #22)
 - [ ] Run Alembic migrations
 - [ ] Test the full registration → vouch → trust flow
-- [ ] Add vouch expiry handling
-- [ ] Add key rotation support (new key vouched by old key)
 
 ## Medium Term
 - [ ] Deploy to Scalingo (Poetry + Procfile ready)
