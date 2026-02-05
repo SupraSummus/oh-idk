@@ -1,9 +1,11 @@
 """Tests for the CLI tool."""
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -98,6 +100,10 @@ def test_init_command_force_overwrite() -> None:
         assert first_key["public_key"] != second_key["public_key"]
 
 
+@pytest.mark.skipif(
+    "asyncpg" in os.getenv("TEST_DATABASE_URL", ""),
+    reason="TestClient + asyncpg have event loop conflicts; use SQLite for sync tests"
+)
 def test_register_command_integration(client: TestClient) -> None:
     """Test register command with actual server."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -150,6 +156,10 @@ def test_help_for_subcommands() -> None:
         assert cmd in stdout.lower()
 
 
+@pytest.mark.skipif(
+    "asyncpg" in os.getenv("TEST_DATABASE_URL", ""),
+    reason="TestClient + asyncpg have event loop conflicts; use SQLite for sync tests"
+)
 def test_full_workflow_integration(client: TestClient, db_session) -> None:  # type: ignore[no-untyped-def]
     """Test full workflow: init -> register."""
     with tempfile.TemporaryDirectory() as tmpdir:
