@@ -98,7 +98,7 @@ response = requests.post(
 
 ### Why Ed25519?
 
-- **Short**: 32-byte keys (vs GPG's 3000+ bytes for RSA)
+- **Short**: 32-byte keys (vs RSA's 256-512 bytes + metadata)
 - **Fast**: Optimized for modern CPUs
 - **Battle-tested**: Used by Signal, Wireguard, SSH, Git
 
