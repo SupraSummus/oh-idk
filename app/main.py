@@ -83,7 +83,6 @@ async def register(
     await db.refresh(identity)
 
     return RegisterResponse(
-        id=identity.id,
         public_key=identity.public_key,
         created_at=identity.created_at
     )
@@ -122,14 +121,14 @@ async def vouch(
         raise HTTPException(status_code=404, detail="Vouchee not registered")
 
     # Can't vouch for yourself
-    if voucher.id == vouchee.id:
+    if voucher.public_key == vouchee.public_key:
         raise HTTPException(status_code=400, detail="Cannot vouch for yourself")
 
     # Check if vouch already exists
     existing_query = (
         select(Vouch)
-        .where(Vouch.voucher_id == voucher.id)
-        .where(Vouch.vouchee_id == vouchee.id)
+        .where(Vouch.voucher_public_key == voucher.public_key)
+        .where(Vouch.vouchee_public_key == vouchee.public_key)
         .where(Vouch.revoked.is_(False))
     )
     result = await db.execute(existing_query)
@@ -147,8 +146,8 @@ async def vouch(
 
     # Create vouch
     vouch = Vouch(
-        voucher_id=voucher.id,
-        vouchee_id=vouchee.id,
+        voucher_public_key=voucher.public_key,
+        vouchee_public_key=vouchee.public_key,
         expires_at=expires_at
     )
 
@@ -157,7 +156,6 @@ async def vouch(
     await db.refresh(vouch)
 
     return VouchResponse(
-        id=vouch.id,
         voucher_public_key=public_key,
         vouchee_public_key=request.vouchee_public_key,
         created_at=vouch.created_at,
@@ -186,7 +184,6 @@ async def get_trust(
 
     vouches = [
         VouchInfo(
-            id=v["id"],
             voucher_public_key=v["voucher_public_key"],
             created_at=v["created_at"],
             expires_at=v["expires_at"],
@@ -230,11 +227,12 @@ async def verify(
 
 
 @app.delete(
-    "/vouch/{vouch_id}",
+    "/vouch",
     responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}}
 )
 async def revoke_vouch(
-    vouch_id: str,
+    voucher_public_key: str,
+    vouchee_public_key: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     public_key: Annotated[str, Depends(verify_auth_headers)]
 ) -> dict[str, str]:
@@ -243,21 +241,25 @@ async def revoke_vouch(
 
     Only the voucher can revoke their own vouch.
     Requires authentication (signed request).
+
+    Query Parameters:
+        voucher_public_key: Public key of the voucher
+        vouchee_public_key: Public key of the vouchee
     """
     # Get the vouch
-    query = select(Vouch).where(Vouch.id == vouch_id)
+    query = (
+        select(Vouch)
+        .where(Vouch.voucher_public_key == voucher_public_key)
+        .where(Vouch.vouchee_public_key == vouchee_public_key)
+    )
     result = await db.execute(query)
     vouch = result.scalar_one_or_none()
 
     if not vouch:
         raise HTTPException(status_code=404, detail="Vouch not found")
 
-    # Get voucher identity
-    voucher_query = select(Identity).where(Identity.id == vouch.voucher_id)
-    voucher_result = await db.execute(voucher_query)
-    voucher: Identity | None = voucher_result.scalar_one_or_none()
-
-    if not voucher or voucher.public_key != public_key:
+    # Check authorization
+    if voucher_public_key != public_key:
         raise HTTPException(status_code=401, detail="Not authorized to revoke this vouch")
 
     if vouch.revoked:
@@ -268,4 +270,8 @@ async def revoke_vouch(
     vouch.revoked_at = datetime.now(UTC)
     await db.commit()
 
-    return {"status": "revoked", "vouch_id": vouch_id}
+    return {
+        "status": "revoked",
+        "voucher_public_key": voucher_public_key,
+        "vouchee_public_key": vouchee_public_key
+    }

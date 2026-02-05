@@ -33,6 +33,8 @@ Benefits:
 - Efficient - one test function covers related cases
 - Debugging - easier to see which specific case failed
 """
+import urllib.parse
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,7 +97,7 @@ async def test_vouch_creation_requires_registered_voucher(
         data = response.json()
         assert data["voucher_public_key"] == auth_public
         assert data["vouchee_public_key"] == vouchee_public
-        assert "id" in data
+        assert "created_at" in data
 
 
 @pytest.mark.asyncio
@@ -188,8 +190,8 @@ async def test_vouch_revocation_authorization(
 
     # Create a vouch
     vouch = Vouch(
-        voucher_id=voucher_identity.id,
-        vouchee_id=vouchee_identity.id
+        voucher_public_key=voucher_identity.public_key,
+        vouchee_public_key=vouchee_identity.public_key
     )
     db_session.add(vouch)
     await db_session.commit()
@@ -207,7 +209,9 @@ async def test_vouch_revocation_authorization(
         auth_public, auth_private = other_public, other_private
 
     # Create revoke request
-    path = f"/vouch/{vouch.id}"
+    voucher_encoded = urllib.parse.quote(voucher_public, safe='')
+    vouchee_encoded = urllib.parse.quote(vouchee_public, safe='')
+    path = f"/vouch?voucher_public_key={voucher_encoded}&vouchee_public_key={vouchee_encoded}"
     headers = create_auth_headers(auth_private, auth_public, "DELETE", path)
 
     # Execute
@@ -220,7 +224,8 @@ async def test_vouch_revocation_authorization(
         # Baseline: verify vouch was revoked
         data = response.json()
         assert data["status"] == "revoked"
-        assert data["vouch_id"] == vouch.id
+        assert data["voucher_public_key"] == voucher_public
+        assert data["vouchee_public_key"] == vouchee_public
 
         # Verify in database
         await db_session.refresh(vouch)
@@ -261,8 +266,8 @@ async def test_vouch_creation_prevents_duplicates(
     # If testing duplicate scenario, create the first vouch
     if duplicate_scenario == "duplicate_vouch":
         vouch = Vouch(
-            voucher_id=voucher_identity.id,
-            vouchee_id=vouchee_identity.id
+            voucher_public_key=voucher_identity.public_key,
+            vouchee_public_key=vouchee_identity.public_key
         )
         db_session.add(vouch)
         await db_session.commit()
